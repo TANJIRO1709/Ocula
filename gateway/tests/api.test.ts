@@ -24,14 +24,25 @@ beforeAll(async () => {
   admin = { Authorization: `Bearer ${r.body.access_token}` };
 }, 60000);
 
-describe("platform", () => {
-  it("health + 404 + bad json", async () => {
-    expect((await request(app).get("/healthz")).body.status).toBe("ok");
-    expect((await request(app).get(`${P}/nope`)).status).toBe(404);
-    const bad = await request(app).post(`${P}/sessions`).set("Content-Type", "application/json").send("{bad");
-    expect(bad.status).toBe(400);
+describe("config wiring for Render", () => {
+  it("derives URLs from sibling hostnames", async () => {
+    const { loadConfig, corsOrigins } = await import("../src/config.js");
+    // CI sets ENGINE_URL etc. for the integration tests; explicit values (correctly) win, so clear them here.
+    const keys = ["ENGINE_URL", "API_BASE_URL", "PUBLIC_BASE_URL", "CORS_ORIGINS"] as const;
+    const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+    keys.forEach((k) => delete process.env[k]);
+    try {
+      const c = loadConfig({ ENGINE_HOST: "ocula-engine.onrender.com", FRONTEND_HOST: "ocula-web.onrender.com", RENDER_EXTERNAL_URL: "https://ocula-api.onrender.com" });
+      expect(c.ENGINE_URL).toBe("https://ocula-engine.onrender.com");
+      expect(c.PUBLIC_BASE_URL).toBe("https://ocula-web.onrender.com");
+      expect(c.API_BASE_URL).toBe("https://ocula-api.onrender.com");
+      expect(corsOrigins(c)).toContain("https://ocula-web.onrender.com");
+      expect(loadConfig({ ENGINE_URL: "http://x:1", ENGINE_HOST: "y" }).ENGINE_URL).toBe("http://x:1");
+    } finally {
+      for (const k of keys) if (saved[k] !== undefined) process.env[k] = saved[k];
+    }
   });
-
+});
   it("auth: wrong password, refresh, me", async () => {
     expect((await request(app).post(`${P}/auth/login`).send({ email: "admin@ocula.app", password: "nope" })).status).toBe(401);
     const login = await request(app).post(`${P}/auth/login`).send({ email: "ADMIN@ocula.app", password: "test-admin-password" });

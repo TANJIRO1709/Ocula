@@ -1,0 +1,106 @@
+# Ocula on Render — one-click Blueprint: Dashboard → New → Blueprint → pick this repo.
+# Creates: Postgres + FastAPI engine + Node.js API gateway + Next.js frontend.
+# Free web services can't receive private-network traffic, so services talk over their public HTTPS URLs,
+# wired automatically below via each service's RENDER_EXTERNAL_HOSTNAME.
+
+envVarGroups:
+  - name: ocula-shared
+    envVars:
+      - key: ENGINE_API_KEY        # shared secret between gateway and engine
+        generateValue: true
+
+databases:
+  - name: ocula-db
+    plan: free
+    databaseName: ocula
+    user: ocula
+
+services:
+  # ---------------------------------------------------------------- FastAPI engine (Python)
+  - type: web
+    name: ocula-engine
+    runtime: python
+    plan: free
+    rootDir: engine
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: ENVIRONMENT
+        value: production
+      - fromGroup: ocula-shared
+      - key: LLM_PROVIDER          # optional: openai | anthropic | openai_compatible
+        value: none
+      - key: LLM_MODEL
+        value: gpt-4o-mini
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        sync: false
+
+  # ---------------------------------------------------------------- Node.js API gateway
+  - type: web
+    name: ocula-api
+    runtime: node
+    plan: free
+    rootDir: gateway
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ocula-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - fromGroup: ocula-shared
+      - key: ENGINE_HOST
+        fromService:
+          type: web
+          name: ocula-engine
+          envVarKey: RENDER_EXTERNAL_HOSTNAME
+      - key: FRONTEND_HOST
+        fromService:
+          type: web
+          name: ocula-web
+          envVarKey: RENDER_EXTERNAL_HOSTNAME
+      - key: ADMIN_EMAIL
+        value: admin@ocula.app
+      - key: ADMIN_PASSWORD
+        sync: false                # you'll be asked for it when the Blueprint is created
+      - key: CORS_ORIGINS          # add your Vercel URL here if you host the frontend on Vercel
+        value: http://localhost:3000
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+
+  # ---------------------------------------------------------------- Next.js frontend
+  # (Optional — you can deploy ./frontend to Vercel instead and delete this block.)
+  - type: web
+    name: ocula-web
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: API_HOST
+        fromService:
+          type: web
+          name: ocula-api
+          envVarKey: RENDER_EXTERNAL_HOSTNAME

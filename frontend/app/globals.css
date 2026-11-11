@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #F4F6F5;
+  --fg: #0B1A2C;
+  --font-display: "Space Grotesk Variable";
+  --font-body: "DM Sans Variable";
+}
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--font-body), system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+h1, h2, h3 { font-family: var(--font-display), system-ui, sans-serif; }
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-base font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none min-h-[48px]; }
+.btn-primary { @apply btn bg-teal text-white hover:bg-[#0c5f59]; }
+.btn-dark { @apply btn bg-navy text-white hover:bg-navy-700; }
+.btn-ghost { @apply btn bg-white text-navy border border-slate-200 hover:bg-slate-50; }
+.btn-amber { @apply btn bg-amber text-navy hover:bg-[#e8930a]; }
+.card { @apply rounded-3xl bg-white border border-slate-200 shadow-sm; }
+.label { @apply text-xs font-bold uppercase tracking-[0.18em] text-teal; }
+.input { @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base outline-none focus:border-teal focus:ring-2 focus:ring-teal/20; }
+.mirror { transform: scaleX(-1); }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

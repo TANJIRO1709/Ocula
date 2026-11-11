@@ -1,0 +1,15 @@
+node_modules/
+.next/
+dist/
+data/
+.venv/
+__pycache__/
+*.db
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.ruff_cache/
+*.tsbuildinfo
+frontend/public/mediapipe/
+frontend/public/models/

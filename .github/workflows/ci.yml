@@ -1,0 +1,53 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: engine } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check app tests
+      - run: pytest -q
+
+  gateway:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: ocula, POSTGRES_PASSWORD: ocula, POSTGRES_DB: ocula }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: gateway/package-lock.json }
+      - name: Start the real FastAPI engine for integration tests
+        working-directory: engine
+        run: |
+          pip install -r requirements.txt
+          ENGINE_API_KEY=ci-key nohup uvicorn app.main:app --port 8001 &
+          for i in $(seq 1 30); do curl -sf localhost:8001/healthz && break; sleep 1; done
+      - working-directory: gateway
+        run: npm ci && npm run typecheck && npm run build
+      - working-directory: gateway
+        run: npm test
+        env:
+          ENGINE_URL: http://localhost:8001
+          ENGINE_API_KEY: ci-key
+          TEST_DATABASE_URL: postgres://ocula:ocula@localhost:5432/ocula
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build

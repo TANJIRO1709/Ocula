@@ -1,0 +1,116 @@
+# Ocula recommendation ruleset.
+# - Rules are evaluated against a flat dict of "facts" built from tests + interview + selfie.
+# - Single-choice categories (design, index) keep the highest-priority match.
+# - Multi-choice categories (coating, feature) collect every match.
+# - Every recommendation carries the reason shown to staff and fed to the explanation writer.
+# Edit thresholds here (or via the dashboard) — every report records the ruleset version it used.
+version: "2026.10-v1"
+
+single_choice: [design, index]
+
+rules:
+  # ---------- design ----------
+  - id: default_single_vision
+    priority: 1
+    when: {all: []}
+    then: {design: ZSL-SV}
+    reason: "Single vision lens for clear distance vision."
+
+  - id: digital_early_presbyopia
+    priority: 20
+    when: {all: [{fact: age, op: between, value: [30, 44]}, {fact: screen_hours, op: gte, value: 5}]}
+    then: {design: ZSL-DIG}
+    reason: "Long daily screen use: a small near boost reduces focusing effort on phones and laptops."
+
+  - id: progressive_presbyopia
+    priority: 40
+    when: {all: [{fact: add, op: gte, value: 0.75}, {fact: age, op: gte, value: 40}]}
+    then: {design: ZSL-PAL}
+    reason: "Reading power needed (age-related presbyopia): a progressive lens gives far, middle and near in one pair."
+
+  - id: office_lens_desk_worker
+    priority: 45
+    when: {all: [{fact: add, op: gte, value: 1.0}, {fact: desk_work, op: eq, value: true}, {fact: screen_hours, op: gte, value: 6}]}
+    then: {design: ZOFF, second_pair: true}
+    reason: "Many hours at a desk: a dedicated office lens gives a wide screen-and-paper zone."
+
+  - id: drive_single_vision
+    priority: 30
+    when: {all: [{fact: night_driving, op: eq, value: true}, {fact: add, op: lt, value: 0.75}]}
+    then: {design: ZDS-SV}
+    reason: "Drives at night: lens optimised for driving with reduced glare from headlights."
+
+  - id: drive_progressive
+    priority: 50
+    when: {all: [{fact: night_driving, op: eq, value: true}, {fact: add, op: gte, value: 0.75}, {fact: age, op: gte, value: 40}]}
+    then: {design: ZDS-PAL}
+    reason: "Needs reading power and drives at night: driving-optimised progressive lens."
+
+  - id: child_myopia_control
+    priority: 90
+    when: {all: [{fact: is_child, op: eq, value: true}, {fact: sphere_se, op: lte, value: -0.5}]}
+    then: {design: ZMYO, refer: soon}
+    reason: "Child with short-sightedness: myopia-management lens, plus an optometrist visit to monitor progression."
+
+  - id: child_fast_progression
+    priority: 95
+    when: {all: [{fact: is_child, op: eq, value: true}, {fact: progression_d_per_year, op: lte, value: -0.5}]}
+    then: {design: ZMYO, refer: soon}
+    reason: "Myopia worsening by 0.5 D or more per year: myopia management and professional follow-up recommended."
+
+  # ---------- index / material ----------
+  - id: index_150
+    priority: 1
+    when: {all: []}
+    then: {index: IDX-150}
+    reason: "Low power: standard 1.50 index is light and clear."
+
+  - id: index_160
+    priority: 10
+    when: {all: [{fact: max_power, op: gt, value: 2.0}]}
+    then: {index: IDX-160}
+    reason: "Power above 2 D: 1.60 index keeps lenses noticeably thinner."
+
+  - id: index_167
+    priority: 20
+    when: {all: [{fact: max_power, op: gt, value: 4.0}]}
+    then: {index: IDX-167}
+    reason: "Power above 4 D: 1.67 index avoids thick, heavy edges."
+
+  - id: index_174
+    priority: 30
+    when: {all: [{fact: max_power, op: gt, value: 6.0}]}
+    then: {index: IDX-174}
+    reason: "Power above 6 D: 1.74 index is the thinnest option."
+
+  - id: impact_resistant
+    priority: 60
+    when: {any: [{fact: is_child, op: eq, value: true}, {fact: sports, op: eq, value: true}]}
+    then: {index: IDX-PC}
+    reason: "Children and sports: impact-resistant polycarbonate for safety."
+
+  # ---------- coatings ----------
+  - id: anti_reflective_default
+    priority: 1
+    when: {all: []}
+    then: {coating: [DV-PLAT]}
+    reason: "Anti-reflective, scratch-resistant coating for clearer vision and easier cleaning."
+
+  - id: blue_light_screens
+    priority: 10
+    when: {all: [{fact: screen_hours, op: gte, value: 4}]}
+    then: {coating: [DV-BP], feature: [BG]}
+    reason: "4+ hours of screens a day: blue-violet light reducing coating or material."
+
+  # ---------- features ----------
+  - id: photochromic_outdoor
+    priority: 10
+    when: {any: [{fact: outdoor_hours, op: gte, value: 3}, {fact: light_sensitive, op: eq, value: true}]}
+    then: {feature: [PFX]}
+    reason: "Lots of time outdoors or sensitive to light: lenses that darken in sunlight."
+
+  - id: glare_contrast
+    priority: 10
+    when: {any: [{fact: glare_complaint, op: eq, value: true}, {fact: reduced_contrast, op: eq, value: true}]}
+    then: {coating: [DV-PLAT], refer: routine}
+    reason: "Glare or reduced contrast reported: premium anti-reflective coating, plus an eye-health check to rule out early cataract."

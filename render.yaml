@@ -99,8 +99,5 @@ services:
         value: "22"
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
-      - key: API_HOST
-        fromService:
-          type: web
-          name: ocula-api
-          envVarKey: RENDER_EXTERNAL_HOSTNAME
+      - key: NEXT_PUBLIC_API_URL
+        value: https://ocula-api.onrender.com/api/v1

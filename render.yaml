@@ -76,7 +76,7 @@ services:
       - key: ADMIN_PASSWORD
         sync: false                # you'll be asked for it when the Blueprint is created
       - key: CORS_ORIGINS          # add your Vercel URL here if you host the frontend on Vercel
-        value: http://localhost:3000
+        value: https://ocula-sooty.vercel.app/
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN
